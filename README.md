@@ -41,13 +41,23 @@ Add to your OpenCode config at `~/.config/opencode/opencode.json`:
   "mcp": {
     "google-search-mcp": {
       "type": "local",
-      "command": [
-        "E:\\Projects\\OSP\\Web Search MCP\\.venv\\Scripts\\python.exe",
-        "E:\\Projects\\OSP\\Web Search MCP\\server.py"
-      ],
+      "command": ["python", "server.py"],
       "environment": {
         "PYTHONIOENCODING": "utf-8"
       }
+    }
+  }
+}
+```
+
+Make sure `server.py` is in your PATH or use the full path to it:
+
+```json
+{
+  "mcp": {
+    "google-search-mcp": {
+      "type": "local",
+      "command": ["/path/to/your/venv/python.exe", "/path/to/server.py"]
     }
   }
 }
