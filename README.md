@@ -1,125 +1,111 @@
 # Google Search MCP Server
 
-A Python MCP (Model Context Protocol) server that performs Google searches with anti-detection techniques using Playwright.
+An MCP server that searches Google and returns results as structured data, with no API key and no signup.
 
-## Features
+It drives a real Chromium browser through Playwright rather than scraping an endpoint, which is what keeps it working when the obvious approaches start returning consent pages.
 
-- **Real browser automation** - Uses Playwright/Chromium to avoid bot detection
-- **User agent rotation** - Random desktop user agents
-- **Stealth mode** - Hides webdriver fingerprint
-- **Rate limiting** - 3-8 second delays between requests
-- **Proxy rotation ready** - Fetches and validates free proxies
+## Tool
 
-## Installation
+### google_search_tool
+
+| Argument | Type | Default | Description |
+| --- | --- | --- | --- |
+| `query` | string | required | What to search for |
+| `num_results` | int | `10` | How many results to return, capped at 100 |
+| `lang` | string | `en` | Language code for the results page |
+
+Each result carries a `title` and a `url`. The `summary` field is present in the schema but is currently empty, because the snippet is not scraped yet.
+
+## How it avoids detection
+
+- Runs a real browser through Playwright instead of calling an endpoint
+- Rotates between eight desktop user agent strings
+- Applies a stealth script that hides `navigator.webdriver`
+- Waits for the page to settle before reading the results
+- Sleeps between requests, with jitter, so the request rate stays human
+- Unwraps Google's `/url?q=` redirect to hand back the real destination
+
+Proxy rotation is wired in and pulls free proxies from the proxifly CDN. It is off by default.
+
+## Requirements
+
+- Python 3.10 or newer
+- Playwright with a Chromium build
+
+## Install
 
 ```bash
-# Clone and setup
-cd Web Search MCP
+git clone https://github.com/hussainbiedouh/google-search-mcp-no-api-key.git
+cd google-search-mcp-no-api-key
 
-# Create virtual environment
 python -m venv .venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate     # macOS and Linux
 
-# Activate (Windows)
-.venv\Scripts\activate
-
-# Activate (Linux/Mac)
-source .venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Install Playwright browsers
 python -m playwright install chromium
 ```
 
-### Adding to OpenCode
+The Playwright browser download is separate from the pip install and is easy to miss. Without it the server starts and then fails on the first search.
 
-Add to your OpenCode config at `~/.config/opencode/opencode.json`:
+## Add it to your client
+
+The server speaks stdio, so the client starts it. Ready-made snippets are in [`mcp-configs/`](mcp-configs), and each client expects a different key:
+
+| Client | Config file | Key |
+| --- | --- | --- |
+| OpenCode | `~/.config/opencode/opencode.jsonc` | `mcp.servers` |
+| Claude Desktop | `claude_desktop_config.json` | `mcpServers` |
+| Cursor | `~/.cursor/mcp.json` | `mcpServers` |
+| VS Code | `.vscode/mcp.json` | `servers` |
+
+For OpenCode:
 
 ```json
 {
+  "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "google-search-mcp": {
-      "type": "local",
-      "command": ["python", "server.py"],
-      "environment": {
-        "PYTHONIOENCODING": "utf-8"
+    "servers": {
+      "google-search-mcp": {
+        "type": "local",
+        "command": [
+          "C:\\path\\to\\google-search-mcp-no-api-key\\.venv\\Scripts\\python.exe",
+          "server.py"
+        ],
+        "environment": {
+          "PYTHONIOENCODING": "utf-8"
+        }
       }
     }
   }
 }
 ```
 
-Make sure `server.py` is in your PATH or use the full path to it:
+Point the command at the full path of the interpreter. The PATH a client inherits is not always the PATH in your shell, and `python` can resolve to a different install than the one you tested with.
 
-```json
-{
-  "mcp": {
-    "google-search-mcp": {
-      "type": "local",
-      "command": ["/path/to/your/venv/python.exe", "/path/to/server.py"]
-    }
-  }
-}
+The same file will not work across clients, because the key differs. [mcp-client-config](https://github.com/hussainbiedouh/mcp-client-config) has the full table and what each failure mode looks like.
+
+## Calling it
+
+From an agent, ask for something like:
+
+```
+Use google_search_tool to find the current release notes for Playwright.
 ```
 
-Restart OpenCode - the `google_search_tool` will be available.
-
-## Usage
-
-### As MCP Server
-
-Run with stdio transport:
+## Running it by hand
 
 ```bash
 python server.py
 ```
 
-### Using the Tool
+The server speaks MCP on stdin and stdout, so running it in a terminal and typing will not do anything useful. Point a client at it instead.
 
-In OpenCode or any MCP client:
+## Tests
 
+```bash
+python test_server.py
 ```
-google_search "python tutorials" num_results=5 lang=en
-```
-
-### Programmatic Usage
-
-```python
-import asyncio
-from server import google_search
-
-async def main():
-    results = await google_search("python", num_results=5)
-    for r in results:
-        print(f"{r.title}: {r.url}")
-
-asyncio.run(main())
-```
-
-## Configuration
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| query | str | required | Search query |
-| num_results | int | 10 | Max results (<=100) |
-| lang | str | "en" | Language code |
-
-## Anti-Detection Techniques
-
-| Technique | Implementation |
-|-----------|---------------|
-| Browser automation | Playwright/Chromium |
-| UA rotation | 8 realistic Chrome/Firefox UAs |
-| Stealth scripts | Hides `navigator.webdriver` |
-| Rate limiting | Random 3-8s delays + 0-3s jitter |
-| Proxy support | Fetches from proxifly CDN |
-
-## Requirements
-
-- Python 3.10+
-- [Playwright](https://playwright.dev/python/)
-- Chrome/Chromium browser
 
 ## License
 

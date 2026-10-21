@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "google-search-mcp": {
+        "type": "local",
+        "command": [
+          "C:\\path\\to\\google-search-mcp-no-api-key\\.venv\\Scripts\\python.exe",
+          "server.py"
+        ],
+        "environment": {
+          "PYTHONIOENCODING": "utf-8"
+        }
+      }
+    }
+  }
+}
